@@ -310,6 +310,10 @@ INSERT INTO pedido (fecha_retiro, nombre_persona, ciudad, calle, altura, estado,
 ('2024-01-28 16:30:00', 'Gabriela Ortiz', 'Córdoba', 'Av. Agustín Tosco', '1500', 'Completado', 'Cobre de alta pureza'),
 ('2024-01-29 10:45:00', 'Luis Suárez', 'Córdoba', 'Av. Circunvalación', '4800', 'Cancelado', 'Cambio de fecha');
 
+-- =============================================================
+-- Simulación de pedidos
+-- =============================================================
+
 -- Insertar 45 detalles de pedido (3 materiales por pedido) usando materiales con precios definidos
 INSERT INTO detalle_pedido (id_pedido, id_material, cantidad, precio_unitario, subtotal) VALUES
 -- Pedido 1: 3 materiales
@@ -392,7 +396,8 @@ INSERT INTO detalle_pedido (id_pedido, id_material, cantidad, precio_unitario, s
 -- CONSULTAS CON INNER JOIN - VISTAS ÚTILES
 -- =============================================
 
--- Vista para ver materiales con su categoría y precio ACTUAL (CORREGIDA)
+-- Vista para ver materiales con su categoría y precio ACTUAL
+-- se usa inner join
 CREATE OR REPLACE VIEW vista_materiales_precios AS
 SELECT 
     m.id_material,
@@ -408,6 +413,7 @@ JOIN precio_material pm ON m.id_material = pm.id_material -- INNER JOIN
 WHERE pm.estado = 'Activo';
 
 -- Vista para ver pedidos completos
+-- se usa left join
 CREATE OR REPLACE VIEW vista_pedidos_completos AS
 SELECT 
     p.id_pedido,
@@ -420,7 +426,7 @@ SELECT
     p.estado,
     p.observaciones,
     COUNT(dp.id_detalle) as cantidad_materiales,
-    COALESCE(SUM(dp.subtotal), 0) as total_pedido
+    COALESCE(SUM(dp.subtotal), 0) as total_pedido -- COALESCE reemplaza el NULL por un 0 si un pedido no tiene material en vez de dejar el lugar vacio lo completa con un 0
 FROM pedido p
 LEFT JOIN detalle_pedido dp ON p.id_pedido = dp.id_pedido -- LEFT JOIN
 GROUP BY p.id_pedido;
@@ -431,7 +437,7 @@ GROUP BY p.id_pedido;
 -- Los procedimientos almacenados permiten encapsular lógica de negocio
 -- en el servidor de base de datos, mejorando rendimiento y seguridad
 
--- Función para obtener el precio ACTUAL de un material (MEJORADA)
+-- Función para obtener el precio ACTUAL de un material
 CREATE OR REPLACE FUNCTION obtener_precio_actual(id_material_param INTEGER)
 RETURNS DECIMAL AS $$
 DECLARE
@@ -452,7 +458,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Función para ACTUALIZAR precio de un material (MEJORADA)
+-- Función para ACTUALIZAR precio de un material 
 CREATE OR REPLACE FUNCTION actualizar_precio_material(
     p_id_material INTEGER,
     p_nuevo_precio DECIMAL
@@ -494,7 +500,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Función para agregar material a un pedido (MEJORADA)
+-- Función para agregar material a un pedido 
 CREATE OR REPLACE FUNCTION agregar_material_pedido(
     p_id_pedido INTEGER,
     p_id_material INTEGER,
@@ -528,12 +534,25 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- =======================================================
 -- Procedimiento para CAMBIAR precio manteniendo histórico
+-- =======================================================
+
+-- REEMPLAZAR la rutina almacenada si ya existe, en lugar de lanzar un error.
+-- lo que hace:
+-- Si el procedimiento NO EXISTE: lo crea nuevo - al procedimiento
+-- Si el procedimiento YA EXISTE: lo reemplaza con la nueva versión - al rocedimiento 
+
 CREATE OR REPLACE PROCEDURE cambiar_precio_material(
-    p_id_material INTEGER,
-    p_nuevo_precio DECIMAL
+    p_id_material INTEGER,      -- Parámetro: ID del material a actualizar
+    p_nuevo_precio DECIMAL      -- Parámetro: Nuevo valor del precio
 ) AS $$
 BEGIN
+    -- Llama a la función actualizar_precio_material que realiza:
+    -- 1. Verifica que el material exista en la tabla material
+    -- 2. Valida que el nuevo precio sea mayor a cero
+    -- 3. Inserta un nuevo registro en precio_material con el nuevo precio
+    -- 4. El trigger trg_unico_precio_activo se activa automáticamente y desactiva los precios anteriores del mismo material
     PERFORM actualizar_precio_material(p_id_material, p_nuevo_precio);
 END;
 $$ LANGUAGE plpgsql;
@@ -556,7 +575,9 @@ SELECT * FROM vista_materiales_precios;
 -- Consulta 2: Ver pedidos pendientes
 SELECT * FROM vista_pedidos_completos WHERE estado = 'Pendiente';
 
+-- ------------------------------------------------------------------------------
 -- Consulta 3: Ver detalles de un pedido específico
+-- ------------------------------------------------------------------------------
 SELECT 
     p.id_pedido,
     p.nombre_persona,
@@ -566,11 +587,14 @@ SELECT
     dp.precio_unitario,
     dp.subtotal
 FROM pedido p
-JOIN detalle_pedido dp ON p.id_pedido = dp.id_pedido -- INNER JOIN
+JOIN detalle_pedido dp ON p.id_pedido = dp.id_pedid  -- INNER JOIN
 JOIN material m ON dp.id_material = m.id_material -- INNER JOIN
 WHERE p.id_pedido = 1;
 
--- Consulta 4: Histórico de precios de un material (ej: Acero Estructural - COdigo AC001)
+-- -----------------------------------------------------------------------------------------
+-- Consulta 4: Devuelve todos los precios históricos de material (ej: Acero Estructural - COdigo AC001)
+-- -----------------------------------------------------------------------------------------
+
 SELECT 
     m.nombre,
     pm.precio,
@@ -579,9 +603,13 @@ SELECT
 FROM precio_material pm
 JOIN material m ON pm.id_material = m.id_material -- INNER JOIN
 WHERE m.codigo = 'AC001'
-ORDER BY pm.fecha_actualizacion DESC;
+ORDER BY pm.fecha_actualizacion DESC; --ORDER BY pm.fecha_actualizacion DESC ordena por fecha actualización descendente, mostrando primero los precios más recientes
 
+-- ------------------------------------------------------------------------------
 -- Consulta 5: Verificación de integridad - materiales sin precio activo
+-- para poder definir un precio al que no lo tiene
+-- ------------------------------------------------------------------------------
+
 SELECT 
     m.id_material,
     m.codigo,
@@ -638,3 +666,15 @@ FROM (
     GROUP BY id_material 
     HAVING COUNT(*) > 1
 ) AS duplicados;
+
+
+-- tarea: hacer inner, porcedimiento almacenado, funciones
+
+-- ✅ INNER JOINS
+-- ✅ FUNCIONES
+-- ✅ PROCEDIMIENTO ALMACENADO
+-- ✅ VISTAS (vista_materiales_precios, vista_pedidos_completos)
+-- ✅ ÍNDICES para mejor rendimiento
+-- ✅ CLAVES FORÁNEAS con restricciones
+-- ✅ INSERT de datos iniciales
+-- ✅ COMENTARIOS de documentación
