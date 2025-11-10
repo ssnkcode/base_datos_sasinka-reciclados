@@ -437,24 +437,34 @@ GROUP BY p.id_pedido;
 -- Los procedimientos almacenados permiten encapsular lógica de negocio
 -- en el servidor de base de datos, mejorando rendimiento y seguridad
 
--- Función para obtener el precio ACTUAL de un material
-CREATE OR REPLACE FUNCTION obtener_precio_actual(id_material_param INTEGER)
-RETURNS DECIMAL AS $$
-DECLARE
-    precio_actual DECIMAL;
+
+-- Función para obtener el precio ACTUAL de un material . SOLO  BUSCA EL PRECIO ACTUAL
+/* 1. obtener_precio_actual(id_material_param INTEGER)
+Propósito: Obtiene el precio activo actual de un material
+
+Retorna: DECIMAL (el precio)
+
+Llamada: SELECT obtener_precio_actual(1); */
+
+CREATE OR REPLACE FUNCTION obtener_precio_actual(id_material_param INTEGER) -- CREA O REEMPLAZA la función obtener_precio_actual que va a BUSCAR el precio de un material ESPECÍFICO usando el parámetro id_material_param de tipo INTEGER
+RETURNS DECIMAL AS $$ -- DEVOLVER un valor de tipo DECIMAL 
+DECLARE -- DECLARA una variable llamada precio_actual de tipo DECIMAL para almacenar temporalmente el precio del material
+    precio_actual DECIMAL;  -- Variable de tipo decimal
 BEGIN
-    SELECT precio INTO precio_actual
-    FROM precio_material
-    WHERE id_material = id_material_param
-    AND estado = 'Activo'
-    ORDER BY fecha_actualizacion DESC
-    LIMIT 1;
+ -- COMIENZA la ejecución y BUSCA el precio activo más reciente del material específico, guardándolo en la variable precio_actual
+    SELECT precio INTO precio_actual -- SELECCIONA el precio y GUÁRDALO en la variable precio_actual
+    FROM precio_material -- De la tabla material
+    WHERE id_material = id_material_param -- "DONDE el id_material de la tabla sea IGUAL al id_material_param que es el parámetro que recibió la función
+    AND estado = 'Activo' -- Y donde el estado sea activo
+    ORDER BY fecha_actualizacion DESC -- Y ORDENALOS por fecha de actualización DESCENDENTE, para obtener el precio más reciente primero
+    LIMIT 1; -- SOLO TOMA el PRIMER resultado, para asegurarse de obtener únicamente el precio más reciente
     
+    -- VERIFICACION: si no se encontro precio y, si es NULL, GENERA un error diciendo "Material ID X no tiene precio activo definido"
     IF precio_actual IS NULL THEN
         RAISE EXCEPTION 'Material ID % no tiene precio activo definido', id_material_param;
     END IF;
     
-    RETURN precio_actual;
+    RETURN precio_actual; -- DEVUELVE el precio_actual que se encontró y guardó en la variable
 END;
 $$ LANGUAGE plpgsql;
 
