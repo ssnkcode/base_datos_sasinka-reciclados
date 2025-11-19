@@ -677,14 +677,78 @@ FROM (
     HAVING COUNT(*) > 1
 ) AS duplicados;
 
+-- TEMAS IMPLEMENTADOS EN LA BASE DE DATOS:
 
--- tarea: hacer inner, porcedimiento almacenado, funciones
+-- MODELO RELACIONAL NORMALIZADO
 
--- ✅ INNER JOINS
--- ✅ FUNCIONES
--- ✅ PROCEDIMIENTO ALMACENADO
--- ✅ VISTAS (vista_materiales_precios, vista_pedidos_completos)
--- ✅ ÍNDICES para mejor rendimiento
--- ✅ CLAVES FORÁNEAS con restricciones
--- ✅ INSERT de datos iniciales
--- ✅ COMENTARIOS de documentación
+-- 1FN, 2FN y 3FN aplicadas
+
+-- Tablas principales bien definidas
+
+-- TIPOS DE RELACIONES
+
+-- Uno a Muchos (Categoría-Material, Material-Precio, Pedido-Detalle)
+
+-- Ejemplos de Uno a Uno y Muchos a Muchos comentados
+
+-- INTEGRIDAD REFERENCIAL
+
+-- Claves primarias y foráneas
+
+-- Restricciones CHECK para validaciones
+
+-- ON DELETE CASCADE en detalles
+
+-- GESTIÓN DE PRECIOS
+
+-- Tabla histórica de precios
+
+-- Trigger para un único precio activo por material
+
+-- Función para actualizar precios
+
+-- PROCEDIMIENTOS ALMACENADOS
+
+-- Función para obtener precio actual
+
+-- Función para crear pedidos
+
+-- Procedimiento para cambiar precios
+
+-- Función para agregar materiales a pedidos
+
+-- VISTAS ÚTILES
+
+-- Vista de materiales con precios actuales
+
+-- Vista de pedidos completos con totales
+
+-- OPTIMIZACIÓN
+
+-- Índices en campos frecuentes
+
+-- Índice único para precio activo
+
+-- DATOS DE PRUEBA
+
+-- 15 categorías
+
+-- 45 materiales
+
+-- 15 pedidos con detalles
+
+-- Precios actuales e históricos
+
+-- DOCUMENTACIÓN
+
+-- Comentarios en tablas y columnas
+
+-- Verificaciones de integridad finales
+
+-- VALIDACIONES
+
+-- Precios positivos
+
+-- Cantidades mayores a cero
+
+-- Estados controlados
